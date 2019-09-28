@@ -1,5 +1,7 @@
-from flask import Flask, render_template, send_from_directory, Blueprint, request, json
+from flask import Flask, render_template, send_from_directory, Blueprint, request, json, jsonify
 import os
+import sqlite3
+responses_db_path = "../nosponse/responses.sqlite3"
 app = Flask(__name__, static_folder="static-folder")
 
 
@@ -7,7 +9,20 @@ def j_file2dic(_file):
     with open(_file, "r", encoding="utf-8") as filed:
         dic = json.load(filed)
     return dic
-    
+
+
+def load_responses(responses_db_path):
+    conn = sqlite3.connect(responses_db_path)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('select * from response')
+    data = c.fetchall()
+    conn.close()
+    responses = dict()
+    for row in data:
+        responses[row['msg']] = responses.get(row['msg'], []) + [row['response']]
+    return responses
+
 
 def dicjdump(dic, _file):
     with open(_file, "w", encoding="utf-8") as filed:
@@ -21,7 +36,8 @@ def ret_nosponse():
 
 @app.route("/nosponse/responses.json")
 def ret_responses():
-    return send_from_directory("../", "responses.json")
+    data = load_responses(responses_db_path)
+    return jsonify(data)
 
 
 @app.route('/nosponse/<path:path>')
